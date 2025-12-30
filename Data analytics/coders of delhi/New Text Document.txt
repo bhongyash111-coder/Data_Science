@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+int main() {
+    pid_t pid;
+
+    printf("Main Process: PID=%d\n", getpid());
+
+    pid = fork();  // Create child
+
+    if (pid > 0) {
+        // PARENT Process
+        printf("[PARENT] My PID: %d, Child PID: %d\n", getpid(), pid);
+
+        // Delay to show zombie state
+        printf("[PARENT] Sleeping for 5 seconds before wait() (Child becomes ZOMBIE temporarily)\n");
+        sleep(5);
+
+        wait(NULL); // Cleans up child (zombie disappears)
+        printf("[PARENT] Child finished. Now demonstrating orphan...\n");
+
+        pid_t orphan_pid = fork();
+        if (orphan_pid == 0) {
+            // Orphan child process
+            sleep(3);  // Give time for parent to exit
+            printf("[ORPHAN] I'm orphan now. PID=%d, My parent PID=%d\n", getpid(), getppid());
+        } else {
+            printf("[PARENT] I will now exit and orphan my child\n");
+            exit(0);
+        }
+
+    } else if (pid == 0) {
+        // CHILD Process
+        printf("[CHILD] My PID: %d, Parent PID: %d\n", getpid(), getppid());
+
+        // Use execve to replace current image with 'ls'
+        char *args[] = {"/bin/ls", NULL};
+        printf("[CHILD] Replacing myself with 'ls' command using execve()\n");
+
+        execve("/bin/ls", args, NULL);
+
+        // If execve fails
+        perror("execve failed");
+        exit(1);
+    } else {
+        perror("fork failed");
+    }
+
+    return 0;
+}
